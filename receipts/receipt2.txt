@@ -1,0 +1,6 @@
+Uber
+Date: 08 Oct 2026
+Trip: Airport to Hotel
+Fare 18.20
+Tip 2.00
+Total: 20.20

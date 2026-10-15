@@ -1,0 +1,5 @@
+   Starbucks
+   12 Oct 2026
+   Latte 4.50
+   Muffin 3.00
+   Total: 7.50
