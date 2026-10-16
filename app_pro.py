@@ -145,9 +145,9 @@ with tab_export:
         st.download_button("Download CSV", out.to_csv(index=False).encode(), "receipts.csv", "text/csv")
         buf = io.BytesIO()
         with pd.ExcelWriter(buf, engine="openpyxl") as xl:
-            out.to_excel(xl, "Receipts", index=False)
-            out.groupby("category")["total"].agg(["count", "sum"]).to_excel(xl, "By category")
-            out.assign(month=out["date"].str[:7]).groupby("month")["total"].sum().to_excel(xl, "By month")
+            out.to_excel(xl, sheet_name="Receipts", index=False)
+            out.groupby("category")["total"].agg(["count", "sum"]).to_excel(xl, sheet_name="By category")
+            out.assign(month=out["date"].str[:7]).groupby("month")["total"].sum().to_excel(xl, sheet_name="By month")
         st.download_button(
             "Download Excel report", buf.getvalue(), "receipt_report.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
