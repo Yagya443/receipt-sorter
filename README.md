@@ -1,14 +1,16 @@
-# Local Receipt Sorter
+# Receipt Sorter
 
-This small Python tool reads `.txt` receipts from `receipts/`, asks a local Ollama
-model to extract the vendor, date, total, and category, then writes the results to
-`output.csv` and prints spending totals for each category.
+Receipt Sorter uses a local Ollama model to extract receipt details and organize
+your spending. It includes a simple command-line sorter for `.txt` files and a
+Streamlit app with PDF uploads, a receipt ledger, vendor rules,
+spending dashboards, and CSV/Excel exports. Receipt data is stored locally in
+`receipts.db`.
 
 ## Requirements
 
 - Python 3.9 or newer
 - [Ollama](https://ollama.com/) installed and running locally
-- The `qwen3:4b` model pulled into Ollama (or another model selected in `sorter.py`)
+- The `qwen3:4b` model pulled into Ollama (or another model selected in the app or `sorter.py`)
 
 Install the Python dependency:
 
@@ -29,23 +31,35 @@ not already running, start it in a separate terminal:
 ollama serve
 ```
 
-## Run
+## Run the Streamlit app
 
-Put one plain-text receipt per `.txt` file in the `receipts/` folder, then run:
+The app supports `.txt` files, text-based PDFs, and pasted receipt text:
+
+```bash
+python -m streamlit run app_pro.py
+```
+
+Use the Upload tab to add receipts, the Dashboard to review spending, and Review
+& Edit to correct extracted data. The app flags uncertain totals or dates for
+review. Scanned PDFs and receipt images are not supported yet.
+
+## Run the command-line sorter
+
+Put one plain-text receipt per `.txt` file in `receipts/`, then run:
 
 ```bash
 python sorter.py
 ```
 
-The script uses Ollama's JSON response format and disables model thinking. It
-removes any `<think>...</think>` block if one appears and retries once when the
-response is invalid. The output CSV contains `vendor`, `date`, `total`, and
-`category`; totals are written as plain numbers.
+The script uses Ollama's JSON response format, retries once when the response is
+invalid, then writes `output.csv` and prints category totals. Its categories are
+`food`, `travel`, `software`, `office`, and `other`.
 
-To use a different installed Ollama model, change the `MODEL` value at the top
-of `sorter.py`.
+To use a different installed Ollama model, change the model selector in the app
+or the `MODEL` value at the top of `sorter.py`.
 
-## Receipt categories
+## Run tests
 
-Each receipt is assigned one category: `food`, `travel`, `software`, `office`,
-or `other`.
+```bash
+python -m unittest
+```

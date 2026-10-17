@@ -193,6 +193,21 @@ def load_receipts() -> pd.DataFrame:
         return pd.read_sql_query("SELECT * FROM receipts ORDER BY date DESC, id DESC", c)
 
 
+def currency_totals(df: pd.DataFrame) -> pd.Series:
+    """Sum receipt totals by currency without mixing currencies."""
+    if df.empty:
+        return pd.Series(dtype="float64", name="total")
+
+    currency = df["currency"].fillna("").astype(str).str.strip().str.upper()
+    currency = currency.mask(currency.eq(""), "Unknown")
+    return (
+        df.assign(currency=currency)
+        .groupby("currency")["total"]
+        .sum()
+        .sort_index()
+    )
+
+
 def update_receipts(df: pd.DataFrame):
     """Save manual corrections; rows ticked 'delete' are removed, edited rows are marked reviewed."""
     with db() as c:

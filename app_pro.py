@@ -73,6 +73,8 @@ with tab_dash:
     else:
         d = df.copy()
         d["dt"] = pd.to_datetime(d["date"], errors="coerce")
+        d["currency"] = d["currency"].fillna("").astype(str).str.strip().str.upper()
+        d["currency"] = d["currency"].replace("", "Unknown")
         c1, c2 = st.columns(2)
         cats = c1.multiselect("Categories", core.CATEGORIES, default=core.CATEGORIES)
         valid = d["dt"].dropna()
@@ -83,19 +85,46 @@ with tab_dash:
         d = d[d["category"].isin(cats)]
 
         m = st.columns(4)
-        m[0].metric("Total spent", f"{d['total'].sum():,.2f}")
+        totals = core.currency_totals(d)
+        total_display = " | ".join(
+            f"{currency} {amount:,.2f}" for currency, amount in totals.items()
+        ) or "0"
+        average_by_currency = d.groupby("currency")["total"].mean().sort_index()
+        average_display = " | ".join(
+            f"{currency} {amount:,.2f}"
+            for currency, amount in average_by_currency.items()
+        ) or "0"
+        m[0].metric("Total spent by currency", total_display)
         m[1].metric("Receipts", len(d))
-        m[2].metric("Average", f"{d['total'].mean():,.2f}" if len(d) else "0")
+        m[2].metric("Average by currency", average_display)
         m[3].metric("Needs review", int(d["needs_review"].sum()))
 
         left, right = st.columns(2)
         left.subheader("By category")
-        left.bar_chart(d.groupby("category")["total"].sum())
+        category_totals = d.pivot_table(
+            index="category",
+            columns="currency",
+            values="total",
+            aggfunc="sum",
+            fill_value=0,
+        )
+        left.bar_chart(category_totals)
         right.subheader("By month")
         d["month"] = d["dt"].dt.to_period("M").astype(str)
-        right.bar_chart(d.dropna(subset=["dt"]).groupby("month")["total"].sum())
+        monthly_totals = d.dropna(subset=["dt"]).pivot_table(
+            index="month",
+            columns="currency",
+            values="total",
+            aggfunc="sum",
+            fill_value=0,
+        )
+        right.bar_chart(monthly_totals)
         st.subheader("Top vendors")
-        st.dataframe(d.groupby("vendor")["total"].agg(["count", "sum"]).sort_values("sum", ascending=False).head(10), use_container_width=True)
+        vendors = d.groupby(["vendor", "currency"])["total"].agg(["count", "sum"])
+        st.dataframe(
+            vendors.sort_values("sum", ascending=False).head(10),
+            use_container_width=True,
+        )
 
 # ---------- Review & Edit ----------
 with tab_ledger:
@@ -146,8 +175,17 @@ with tab_export:
         buf = io.BytesIO()
         with pd.ExcelWriter(buf, engine="openpyxl") as xl:
             out.to_excel(xl, sheet_name="Receipts", index=False)
-            out.groupby("category")["total"].agg(["count", "sum"]).to_excel(xl, sheet_name="By category")
-            out.assign(month=out["date"].str[:7]).groupby("month")["total"].sum().to_excel(xl, sheet_name="By month")
+            export_data = out.copy()
+            export_data["currency"] = (
+                export_data["currency"].fillna("").astype(str).str.strip().str.upper()
+            )
+            export_data["currency"] = export_data["currency"].replace("", "Unknown")
+            export_data.groupby(["currency", "category"])["total"].agg(
+                ["count", "sum"]
+            ).to_excel(xl, sheet_name="By category")
+            export_data.assign(month=export_data["date"].str[:7]).groupby(
+                ["currency", "month"]
+            )["total"].sum().to_excel(xl, sheet_name="By month")
         st.download_button(
             "Download Excel report", buf.getvalue(), "receipt_report.xlsx",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
